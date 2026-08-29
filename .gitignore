@@ -1,0 +1,30 @@
+# Environment variables
+.env
+
+# Virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploaded databases
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Temporary files
+data/temp/*
+!data/temp/.gitkeep
+
+# Pytest
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,59 @@
+# =========================
+# Backend
+# =========================
+
+fastapi
+uvicorn[standard]
+python-multipart
+
+
+# =========================
+# Environment Configuration
+# =========================
+
+python-dotenv
+
+
+# =========================
+# Data Validation
+# =========================
+
+pydantic
+pydantic-settings
+
+
+# =========================
+# LLM
+# =========================
+
+mistralai
+
+
+# =========================
+# SQL Processing & Validation
+# =========================
+
+sqlglot
+
+
+# =========================
+# Frontend
+# =========================
+
+streamlit
+requests
+
+
+# =========================
+# Data Processing
+# =========================
+
+pandas
+
+
+# =========================
+# Testing
+# =========================
+
+pytest
+httpx
