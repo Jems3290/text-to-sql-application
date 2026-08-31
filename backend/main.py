@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from backend.api.chat_routes import router as chat_router
 from backend.api.database_routes import router as database_router
 
 app = FastAPI(
@@ -8,6 +9,7 @@ app = FastAPI(
 )
 
 app.include_router(database_router)
+app.include_router(chat_router)
 
 @app.get("/")
 def root():
@@ -19,5 +21,3 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
-
-
