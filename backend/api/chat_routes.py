@@ -3,16 +3,14 @@ from pathlib import Path
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 from backend.llm.prompts import build_text_to_sql_prompt
+from backend.database.sql_security import enforce_sql_security
 from backend.database.schema_builder import generate_schema_context
 from backend.services.question_processor import process_user_question
 from backend.llm.clarification_generator import generate_clarification
 from backend.services.ambiguity_detector import detect_question_ambiguity
 from backend.services.relevance_detector import detect_question_relevance
-from backend.services.conversation_manager import (
-    create_clarification_session,
-    get_resolved_conversation_context,
-    resolve_clarification
-)
+from backend.llm.sql_generator import generate_sql_query, validate_generated_sql
+from backend.services.conversation_manager import create_clarification_session, get_resolved_conversation_context, resolve_clarification
 
 
 class QuestionRequest(BaseModel):
@@ -340,3 +338,131 @@ def preview_resolved_sql_prompt(
             status_code=400,
             detail=str(error)
         ) from error
+
+
+@router.post("/generate-sql")
+def generate_sql(request: RelevanceRequest):
+    database_path = Path(request.database_path)
+
+    if not database_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Database file not found."
+        )
+
+    try:
+        processed_question = process_user_question(request.question)
+
+        schema_context_info = generate_schema_context(database_path)
+
+        relevance_result = detect_question_relevance(
+            question=processed_question["normalized_question"],
+            schema_context=schema_context_info["schema_context"]
+        )
+
+        if not relevance_result["is_relevant"]:
+            raise ValueError(
+                "SQL cannot be generated for an irrelevant question."
+            )
+
+        ambiguity_result = detect_question_ambiguity(
+            question=processed_question["normalized_question"],
+            schema_context=schema_context_info["schema_context"]
+        )
+
+        if ambiguity_result["is_ambiguous"]:
+            raise ValueError(
+                "Question requires clarification before SQL generation."
+            )
+
+        sql_result = generate_sql_query(
+            question=processed_question["normalized_question"],
+            schema_context=schema_context_info["schema_context"]
+        )
+
+        validation_result = validate_generated_sql(
+            sql_query=sql_result["sql_query"],
+            database_path=database_path
+        )
+
+        if validation_result["is_valid"]:
+            security_result = enforce_sql_security(
+                sql_result["sql_query"]
+            )
+        else:
+            security_result = None
+
+        return {
+            "message": "SQL query generated, validated, and security-checked.",
+            "processed_question": processed_question,
+            "relevance": relevance_result,
+            "ambiguity": ambiguity_result,
+            "sql_generation": sql_result,
+            "sql_validation": validation_result,
+            "sql_security": security_result
+        }
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        ) from error
+
+    except sqlite3.DatabaseError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to analyze the uploaded database."
+        ) from error
+
+
+@router.post("/generate-resolved-sql")
+def generate_resolved_sql(
+    request: ResolvedPromptRequest
+):
+    try:
+        conversation_context = get_resolved_conversation_context(
+            request.conversation_id
+        )
+
+        sql_result = generate_sql_query(
+            question=conversation_context["question"],
+            schema_context=conversation_context["schema_context"]
+        )
+
+        validation_result = validate_generated_sql(
+            sql_query=sql_result["sql_query"],
+            database_path=Path(
+                conversation_context["database_path"]
+            )
+        )
+
+        if validation_result["is_valid"]:
+            security_result = enforce_sql_security(
+                sql_result["sql_query"]
+            )
+        else:
+            security_result = None
+
+        return {
+            "message": "SQL query generated, validated, and security-checked from resolved conversation.",
+            "conversation_id": conversation_context["conversation_id"],
+            "question": conversation_context["question"],
+            "sql_generation": sql_result,
+            "sql_validation": validation_result,
+            "sql_security": security_result
+        }
+
+    except LookupError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error)
+        ) from error
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        ) from error
+
+
+    
