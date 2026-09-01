@@ -1,15 +1,22 @@
+from mistralai.client.models import cancel_workflow_execution_v1_workflows_executions_execution_id_cancel_postop
+from mistralai.client.models import cancel_workflow_execution_v1_workflows_executions_execution_id_cancel_postop
 import sqlite3
 from pathlib import Path
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 from backend.llm.prompts import build_text_to_sql_prompt
+from backend.llm.sql_generator import generate_sql_query
 from backend.database.sql_security import enforce_sql_security
+from backend.database.sql_validator import validate_generated_sql
 from backend.database.schema_builder import generate_schema_context
 from backend.services.question_processor import process_user_question
 from backend.llm.clarification_generator import generate_clarification
 from backend.services.ambiguity_detector import detect_question_ambiguity
 from backend.services.relevance_detector import detect_question_relevance
-from backend.llm.sql_generator import generate_sql_query, validate_generated_sql
+from backend.services.sql_correction_service import correct_and_retry_sql
+from backend.llm.response_generator import generate_natural_language_response
+from backend.database.query_executor import can_execute_sql, execute_read_only_query
+from backend.services.result_processor import get_effective_sql, process_query_result
 from backend.services.conversation_manager import create_clarification_session, get_resolved_conversation_context, resolve_clarification
 
 
@@ -351,9 +358,13 @@ def generate_sql(request: RelevanceRequest):
         )
 
     try:
-        processed_question = process_user_question(request.question)
+        processed_question = process_user_question(
+            request.question
+        )
 
-        schema_context_info = generate_schema_context(database_path)
+        schema_context_info = generate_schema_context(
+            database_path
+        )
 
         relevance_result = detect_question_relevance(
             question=processed_question["normalized_question"],
@@ -392,14 +403,68 @@ def generate_sql(request: RelevanceRequest):
         else:
             security_result = None
 
+        execution_allowed = can_execute_sql(
+            validation_result=validation_result,
+            security_result=security_result
+        )
+
+        execution_result = None
+        correction_result = None
+
+        if execution_allowed:
+            try:
+                execution_result = execute_read_only_query(
+                    sql_query=sql_result["sql_query"],
+                    database_path=database_path
+                )
+
+            except sqlite3.DatabaseError as error:
+                correction_result = correct_and_retry_sql(
+                    question=processed_question["normalized_question"],
+                    schema_context=schema_context_info["schema_context"],
+                    failed_sql=sql_result["sql_query"],
+                    database_path=database_path,
+                    initial_error=str(error)
+                )
+
+                if correction_result["correction_succeeded"]:
+                    execution_result = correction_result[
+                        "execution_result"
+                    ]
+
+        processed_result = None
+        natural_response = None
+
+        effective_sql = get_effective_sql(
+            original_sql=sql_result["sql_query"],
+            correction_result=correction_result
+        )
+
+        if execution_result is not None:
+            processed_result = process_query_result(
+                execution_result
+            )
+
+            natural_response = generate_natural_language_response(
+                question=processed_question["normalized_question"],
+                sql_query=effective_sql,
+                processed_result=processed_result
+            )
+
         return {
-            "message": "SQL query generated, validated, and security-checked.",
+            "message": "Question processed successfully through the complete Text-to-SQL pipeline.",
             "processed_question": processed_question,
             "relevance": relevance_result,
             "ambiguity": ambiguity_result,
             "sql_generation": sql_result,
             "sql_validation": validation_result,
-            "sql_security": security_result
+            "sql_security": security_result,
+            "execution_allowed": execution_allowed,
+            "effective_sql": effective_sql,
+            "execution_result": execution_result,
+            "correction": correction_result,
+            "processed_result": processed_result,
+            "natural_response": natural_response
         }
 
     except ValueError as error:
@@ -411,7 +476,7 @@ def generate_sql(request: RelevanceRequest):
     except sqlite3.DatabaseError as error:
         raise HTTPException(
             status_code=400,
-            detail="Unable to analyze the uploaded database."
+            detail=str(error)
         ) from error
 
 
@@ -424,6 +489,16 @@ def generate_resolved_sql(
             request.conversation_id
         )
 
+        database_path = Path(
+            conversation_context["database_path"]
+        )
+
+        if not database_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="Database file not found."
+            )
+
         sql_result = generate_sql_query(
             question=conversation_context["question"],
             schema_context=conversation_context["schema_context"]
@@ -431,9 +506,7 @@ def generate_resolved_sql(
 
         validation_result = validate_generated_sql(
             sql_query=sql_result["sql_query"],
-            database_path=Path(
-                conversation_context["database_path"]
-            )
+            database_path=database_path
         )
 
         if validation_result["is_valid"]:
@@ -443,13 +516,67 @@ def generate_resolved_sql(
         else:
             security_result = None
 
+        execution_allowed = can_execute_sql(
+            validation_result=validation_result,
+            security_result=security_result
+        )
+
+        execution_result = None
+        correction_result = None
+
+        if execution_allowed:
+            try:
+                execution_result = execute_read_only_query(
+                    sql_query=sql_result["sql_query"],
+                    database_path=database_path
+                )
+
+            except sqlite3.DatabaseError as error:
+                correction_result = correct_and_retry_sql(
+                    question=conversation_context["question"],
+                    schema_context=conversation_context["schema_context"],
+                    failed_sql=sql_result["sql_query"],
+                    database_path=database_path,
+                    initial_error=str(error)
+                )
+
+                if correction_result["correction_succeeded"]:
+                    execution_result = correction_result[
+                        "execution_result"
+                    ]
+
+        processed_result = None
+        natural_response = None
+
+        effective_sql = get_effective_sql(
+            original_sql=sql_result["sql_query"],
+            correction_result=correction_result
+        )
+
+        if execution_result is not None:
+            processed_result = process_query_result(
+                execution_result
+            )
+
+            natural_response = generate_natural_language_response(
+                question=conversation_context["question"],
+                sql_query=effective_sql,
+                processed_result=processed_result
+            )
+
         return {
-            "message": "SQL query generated, validated, and security-checked from resolved conversation.",
+            "message": "Resolved conversation processed successfully through the complete Text-to-SQL pipeline.",
             "conversation_id": conversation_context["conversation_id"],
             "question": conversation_context["question"],
             "sql_generation": sql_result,
             "sql_validation": validation_result,
-            "sql_security": security_result
+            "sql_security": security_result,
+            "execution_allowed": execution_allowed,
+            "effective_sql": effective_sql,
+            "execution_result": execution_result,
+            "correction": correction_result,
+            "processed_result": processed_result,
+            "natural_response": natural_response
         }
 
     except LookupError as error:
@@ -464,5 +591,10 @@ def generate_resolved_sql(
             detail=str(error)
         ) from error
 
+    except sqlite3.DatabaseError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        ) from error
 
-    
+

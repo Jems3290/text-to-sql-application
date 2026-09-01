@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from backend.core.config import settings
 from backend.llm.llm_client import mistral_client
-from backend.llm.prompts import build_text_to_sql_prompt
+from backend.llm.prompts import build_sql_correction_prompt, build_text_to_sql_prompt
 
 
 class SQLGenerationResult(BaseModel):
@@ -47,3 +47,39 @@ def normalize_generated_sql(sql_query: str) -> str:
         normalized_sql += ";"
 
     return normalized_sql
+
+
+def correct_sql_query(
+    question: str,
+    schema_context: str,
+    failed_sql: str,
+    execution_error: str
+) -> dict:
+    prompt = build_sql_correction_prompt(
+        question=question,
+        schema_context=schema_context,
+        failed_sql=failed_sql,
+        execution_error=execution_error
+    )
+
+    response = mistral_client.chat.parse(
+        model=settings.mistral_model,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        response_format=SQLGenerationResult,
+        temperature=0
+    )
+
+    sql_result = response.choices[0].message.parsed
+
+    normalized_sql = normalize_generated_sql(
+        sql_result.sql_query
+    )
+
+    return {
+        "sql_query": normalized_sql
+    }
