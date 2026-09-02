@@ -17,6 +17,10 @@ router = APIRouter(
 def upload_database(file: UploadFile = File(...)):
     try:
         upload_info = save_uploaded_database(file)
+        database_id = register_database(
+            Path(upload_info["stored_path"])
+        )
+        upload_info["database_id"] = database_id
 
         return {
             "message": "Database uploaded and validated successfully.",

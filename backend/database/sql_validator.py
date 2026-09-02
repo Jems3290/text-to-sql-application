@@ -44,7 +44,8 @@ def build_schema_lookup(database_path: Path) -> dict[str, set[str]]:
 
     schema_lookup: dict[str, set[str]] = {}
 
-    for table_name, table_info in database_schema.items():
+    for table_info in database_schema.get("tables", []):
+        table_name = table_info["table_name"]
         column_names = {
             column["name"]
             for column in table_info["columns"]

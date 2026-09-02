@@ -2,8 +2,8 @@ import sqlite3
 from pathlib import Path
 from backend.llm.sql_generator import correct_sql_query
 from backend.database.sql_validator import validate_generated_sql
-from backend.database.query_executor import execute_read_only_query
-from backend.database.sql_security import can_execute_sql, enforce_sql_security
+from backend.database.query_executor import execute_read_only_query, can_execute_sql
+from backend.database.sql_security import enforce_sql_security
 
 MAX_SQL_CORRECTION_ATTEMPTS = 2
 

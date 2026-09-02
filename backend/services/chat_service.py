@@ -2,13 +2,13 @@ import sqlite3
 from pathlib import Path
 
 from backend.database.query_executor import (
+    can_execute_sql,
     execute_read_only_query,
 )
 from backend.database.schema_builder import (
     generate_schema_context,
 )
 from backend.database.sql_security import (
-    can_execute_sql,
     enforce_sql_security,
 )
 from backend.database.sql_validator import (
