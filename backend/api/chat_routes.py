@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from backend.llm.prompts import build_text_to_sql_prompt
 from backend.llm.sql_generator import generate_sql_query
 from backend.database.sql_security import enforce_sql_security
+from backend.services.database_registry import get_database_path
 from backend.database.sql_validator import validate_generated_sql
 from backend.database.schema_builder import generate_schema_context
 from backend.services.question_processor import process_user_question
@@ -17,6 +18,7 @@ from backend.services.sql_correction_service import correct_and_retry_sql
 from backend.llm.response_generator import generate_natural_language_response
 from backend.database.query_executor import can_execute_sql, execute_read_only_query
 from backend.services.result_processor import get_effective_sql, process_query_result
+from backend.services.chat_service import process_chat_clarification, process_chat_query
 from backend.services.conversation_manager import create_clarification_session, get_resolved_conversation_context, resolve_clarification
 
 
@@ -33,6 +35,14 @@ class ClarificationAnswerRequest(BaseModel):
 
 class ResolvedPromptRequest(BaseModel):
     conversation_id: str
+
+class ChatQueryRequest(BaseModel):
+    database_id: str
+    question: str
+
+class ChatClarificationRequest(BaseModel):
+    conversation_id: str
+    answer: str
 
 router = APIRouter(
     prefix="/chat",
@@ -578,6 +588,68 @@ def generate_resolved_sql(
             "processed_result": processed_result,
             "natural_response": natural_response
         }
+
+    except LookupError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error)
+        ) from error
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        ) from error
+
+    except sqlite3.DatabaseError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        ) from error
+
+
+@router.post("/query")
+def chat_query(
+    request: ChatQueryRequest
+):
+    try:
+        database_path = get_database_path(
+            request.database_id
+        )
+
+        return process_chat_query(
+            question=request.question,
+            database_path=database_path
+        )
+
+    except LookupError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error)
+        ) from error
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        ) from error
+
+    except sqlite3.DatabaseError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        ) from error
+
+
+@router.post("/clarify")
+def chat_clarify(
+    request: ChatClarificationRequest
+):
+    try:
+        return process_chat_clarification(
+            conversation_id=request.conversation_id,
+            clarification_answer=request.answer
+        )
 
     except LookupError as error:
         raise HTTPException(

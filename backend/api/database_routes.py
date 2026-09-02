@@ -4,6 +4,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from backend.services.upload_service import save_uploaded_database
 from backend.database.schema_builder import generate_schema_context
 from backend.database.schema_extractor import extract_database_schema
+from backend.services.database_registry import register_database
 from backend.database.relationship_analyzer import analyze_database_relationships
 
 router = APIRouter(
