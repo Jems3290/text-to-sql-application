@@ -12,7 +12,7 @@
         border="1"
         cellpadding="15"
         cellspacing="0"
-        width="70%"
+        width="80%"
     >
         <tr>
             <td>
@@ -50,11 +50,72 @@
     <br>
 
 
+    {% if chat_error %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="80%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Chat Error
+                    </h3>
+
+                    <p>
+                        {{ chat_error }}
+                    </p>
+
+                    <p>
+                        You can retry the question when the
+                        backend is available.
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
+    {% if clarification_error %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="80%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Clarification Error
+                    </h3>
+
+                    <p>
+                        {{ clarification_error }}
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
     <table
         border="1"
         cellpadding="20"
         cellspacing="0"
-        width="70%"
+        width="80%"
     >
         <tr>
             <td>
@@ -135,8 +196,6 @@
 
                     </div>
 
-                    <hr>
-
                 {% endif %}
 
 
@@ -160,56 +219,147 @@
     <br>
 
 
-    {% if chat_error %}
+    {% if query_details %}
 
         <table
             border="1"
-            cellpadding="15"
+            cellpadding="20"
             cellspacing="0"
-            width="70%"
+            width="80%"
         >
             <tr>
-                <td align="center">
+                <td>
 
-                    <h3>
-                        Error
-                    </h3>
+                    <h2 align="center">
+                        Generated SQL
+                    </h2>
 
-                    <p>
-                        {{ chat_error }}
-                    </p>
+
+                    {% if query_details.sql %}
+
+                        <div align="center">
+
+                            <textarea
+                                rows="6"
+                                cols="90"
+                                readonly
+                            >{{ query_details.sql }}</textarea>
+
+                        </div>
+
+                    {% else %}
+
+                        <p align="center">
+                            SQL was not returned by the backend.
+                        </p>
+
+                    {% endif %}
 
                 </td>
             </tr>
         </table>
+
 
         <br>
 
-    {% endif %}
-
-
-    {% if clarification_error %}
 
         <table
             border="1"
             cellpadding="15"
             cellspacing="0"
-            width="70%"
+            width="80%"
         >
             <tr>
-                <td align="center">
+                <td>
 
-                    <h3>
-                        Clarification Error
-                    </h3>
+                    <h2 align="center">
+                        Query Results
+                    </h2>
 
-                    <p>
-                        {{ clarification_error }}
-                    </p>
+
+                    {% if query_details.columns %}
+
+                        <div align="center">
+
+                            <table
+                                border="1"
+                                cellpadding="10"
+                                cellspacing="0"
+                            >
+
+                                <tr>
+
+                                    {% for column in query_details.columns %}
+
+                                        <th>
+                                            {{ column }}
+                                        </th>
+
+                                    {% endfor %}
+
+                                </tr>
+
+
+                                {% for row in query_details.rows %}
+
+                                    <tr>
+
+                                        {% for value in row %}
+
+                                            <td>
+                                                {{ value }}
+                                            </td>
+
+                                        {% endfor %}
+
+                                    </tr>
+
+                                {% endfor %}
+
+                            </table>
+
+                        </div>
+
+
+                        <br>
+
+
+                        <div align="center">
+
+                            <p>
+                                <b>
+                                    Row Count:
+                                </b>
+
+                                {{ query_details.row_count }}
+                            </p>
+
+
+                            {% if query_details.truncated %}
+
+                                <p>
+                                    The displayed result has been
+                                    truncated because the full query
+                                    result is larger.
+                                </p>
+
+                            {% endif %}
+
+                        </div>
+
+                    {% else %}
+
+                        <p align="center">
+                            The query completed successfully,
+                            but no tabular rows were returned.
+                        </p>
+
+                    {% endif %}
 
                 </td>
             </tr>
         </table>
+
 
         <br>
 
@@ -222,7 +372,7 @@
             border="1"
             cellpadding="20"
             cellspacing="0"
-            width="70%"
+            width="80%"
         >
             <tr>
                 <td align="center">
@@ -268,7 +418,7 @@
             border="1"
             cellpadding="20"
             cellspacing="0"
-            width="70%"
+            width="80%"
         >
             <tr>
                 <td align="center">

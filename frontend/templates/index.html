@@ -8,6 +8,34 @@
 
 {% block content %}
 
+    {% if database_error %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Database Connection Error
+                    </h3>
+
+                    <p>
+                        {{ database_error }}
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
     {% if database_id %}
 
         <table
