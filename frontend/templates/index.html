@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Text-to-SQL | Database
+{% endblock %}
+
+
+{% block content %}
+
+    {% if database_id %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h2>
+                        Current Database
+                    </h2>
+
+                    <p>
+                        <b>Filename:</b>
+                        {{ database_filename }}
+                    </p>
+
+                    <p>
+                        <b>Database ID:</b>
+                        {{ database_id }}
+                    </p>
+
+                    <p>
+                        <a href="{{ url_for('chat') }}">
+                            Open Chat
+                        </a>
+                    </p>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('reset_database') }}"
+                    >
+                        <button type="submit">
+                            Reset Database
+                        </button>
+                    </form>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
+    <table
+        border="1"
+        cellpadding="20"
+        cellspacing="0"
+        width="70%"
+    >
+        <tr>
+            <td align="center">
+
+                {% if database_id %}
+
+                    <h2>
+                        Change Database
+                    </h2>
+
+                    <p>
+                        Upload another SQLite database to replace
+                        the currently selected database.
+                    </p>
+
+                {% else %}
+
+                    <h2>
+                        Upload SQLite Database
+                    </h2>
+
+                    <p>
+                        Select a database before starting a conversation.
+                    </p>
+
+                {% endif %}
+
+
+                <form
+                    method="POST"
+                    enctype="multipart/form-data"
+                >
+
+                    <p>
+                        Select a .db, .sqlite, or .sqlite3 database file
+                    </p>
+
+                    <input
+                        type="file"
+                        name="database_file"
+                        accept=".db,.sqlite,.sqlite3"
+                        required
+                    >
+
+                    <br>
+                    <br>
+
+                    <button type="submit">
+                        Upload Database
+                    </button>
+
+                </form>
+
+            </td>
+        </tr>
+    </table>
+
+
+    <br>
+
+
+    {% if upload_message %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Upload Successful
+                    </h3>
+
+                    <p>
+                        {{ upload_message }}
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
+    {% if upload_error %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Upload Error
+                    </h3>
+
+                    <p>
+                        {{ upload_error }}
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
+    {% if not database_id %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        No Database Selected
+                    </h3>
+
+                    <p>
+                        Upload a database before asking questions.
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+    {% endif %}
+
+{% endblock %}

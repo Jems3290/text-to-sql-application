@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {% block title %}
+            Conversational Text-to-SQL
+        {% endblock %}
+    </title>
+</head>
+
+<body>
+
+    <div align="center">
+
+        <br>
+
+        <h1>
+            Conversational Text-to-SQL System
+        </h1>
+
+        <p>
+            Upload a SQLite database and ask questions using natural language.
+        </p>
+
+        <hr width="70%">
+
+        <br>
+
+        {% block content %}
+
+        {% endblock %}
+
+        <br>
+
+    </div>
+
+</body>
+
+</html>

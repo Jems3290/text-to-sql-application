@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Text-to-SQL | Chat
+{% endblock %}
+
+
+{% block content %}
+
+    <table
+        border="1"
+        cellpadding="15"
+        cellspacing="0"
+        width="70%"
+    >
+        <tr>
+            <td>
+
+                <table
+                    width="100%"
+                    cellpadding="5"
+                >
+                    <tr>
+                        <td align="left">
+
+                            <b>
+                                Database:
+                            </b>
+
+                            {{ database_filename }}
+
+                        </td>
+
+                        <td align="right">
+
+                            <a href="{{ url_for('home') }}">
+                                Database Page
+                            </a>
+
+                        </td>
+                    </tr>
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+
+    <br>
+
+
+    <table
+        border="1"
+        cellpadding="20"
+        cellspacing="0"
+        width="70%"
+    >
+        <tr>
+            <td>
+
+                <h2 align="center">
+                    Conversation
+                </h2>
+
+
+                {% if last_question %}
+
+                    <div align="right">
+
+                        <p>
+                            <b>You:</b>
+                        </p>
+
+                        <p>
+                            {{ last_question }}
+                        </p>
+
+                    </div>
+
+                    <hr>
+
+                {% endif %}
+
+
+                {% if clarification_question %}
+
+                    <div align="left">
+
+                        <p>
+                            <b>Assistant:</b>
+                        </p>
+
+                        <p>
+                            {{ clarification_question }}
+                        </p>
+
+                    </div>
+
+                    <hr>
+
+                {% endif %}
+
+
+                {% if last_clarification_answer %}
+
+                    <div align="right">
+
+                        <p>
+                            <b>You clarified:</b>
+                        </p>
+
+                        <p>
+                            {{ last_clarification_answer }}
+                        </p>
+
+                    </div>
+
+                    <hr>
+
+                {% endif %}
+
+
+                {% if last_answer and not pending_conversation_id %}
+
+                    <div align="left">
+
+                        <p>
+                            <b>Assistant:</b>
+                        </p>
+
+                        <p>
+                            {{ last_answer }}
+                        </p>
+
+                    </div>
+
+                    <hr>
+
+                {% endif %}
+
+
+                {% if not last_question %}
+
+                    <div align="center">
+
+                        <p>
+                            Ask a question about the uploaded database.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </td>
+        </tr>
+    </table>
+
+
+    <br>
+
+
+    {% if chat_error %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Error
+                    </h3>
+
+                    <p>
+                        {{ chat_error }}
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
+    {% if clarification_error %}
+
+        <table
+            border="1"
+            cellpadding="15"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Clarification Error
+                    </h3>
+
+                    <p>
+                        {{ clarification_error }}
+                    </p>
+
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+    {% endif %}
+
+
+    {% if pending_conversation_id %}
+
+        <table
+            border="1"
+            cellpadding="20"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Provide Clarification
+                    </h3>
+
+                    <p>
+                        Answer the clarification question above
+                        so the query can continue.
+                    </p>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('submit_clarification') }}"
+                    >
+
+                        <textarea
+                            name="clarification_answer"
+                            rows="4"
+                            cols="70"
+                            placeholder="Enter your clarification..."
+                            required
+                        ></textarea>
+
+                        <br>
+                        <br>
+
+                        <button type="submit">
+                            Submit Clarification
+                        </button>
+
+                    </form>
+
+                </td>
+            </tr>
+        </table>
+
+    {% else %}
+
+        <table
+            border="1"
+            cellpadding="20"
+            cellspacing="0"
+            width="70%"
+        >
+            <tr>
+                <td align="center">
+
+                    <h3>
+                        Ask a Question
+                    </h3>
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('chat') }}"
+                    >
+
+                        <textarea
+                            name="question"
+                            rows="4"
+                            cols="70"
+                            placeholder="Ask something about your database..."
+                            required
+                        ></textarea>
+
+                        <br>
+                        <br>
+
+                        <button type="submit">
+                            Ask
+                        </button>
+
+                    </form>
+
+                </td>
+            </tr>
+        </table>
+
+    {% endif %}
+
+{% endblock %}
