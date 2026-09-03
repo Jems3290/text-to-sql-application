@@ -1,47 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        {% block title %}
-            Conversational Text-to-SQL
-        {% endblock %}
-    </title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07080d">
+    <title>{% block title %}Conversational Text-to-SQL{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head %}{% endblock %}
 </head>
-
-<body>
-
-    <div align="center">
-
-        <br>
-
-        <h1>
-            Conversational Text-to-SQL System
-        </h1>
-
-        <p>
-            Upload a SQLite database and ask questions using natural language.
-        </p>
-
-        <hr width="70%">
-
-        <br>
-
-        {% block content %}
-
-        {% endblock %}
-
-        <br>
-
+<body class="{% block body_class %}{% endblock %}">
+    <div class="ambient" aria-hidden="true">
+        <span class="orb orb-one"></span>
+        <span class="orb orb-two"></span>
+        <span class="orb orb-three"></span>
+        <span class="noise"></span>
     </div>
-
+    {% block content %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    {% block scripts %}{% endblock %}
 </body>
-
 </html>

@@ -23,6 +23,7 @@ app.secret_key = os.environ[
 ]
 
 chat_result_store = {}
+chat_history_store = {}
 
 
 def get_chat_state_id() -> str:
@@ -70,6 +71,32 @@ def clear_query_details() -> None:
             chat_state_id,
             None
         )
+
+
+def get_chat_history() -> list[dict]:
+    return chat_history_store.setdefault(get_chat_state_id(), [])
+
+
+def add_chat_message(
+    role: str,
+    content: str,
+    message_type: str,
+    query_details: dict | None = None,
+    is_error: bool = False
+) -> None:
+    get_chat_history().append({
+        "role": role,
+        "content": content,
+        "type": message_type,
+        "query_details": query_details,
+        "is_error": is_error
+    })
+
+
+def clear_chat_history() -> None:
+    chat_state_id = session.get("chat_state_id")
+    if chat_state_id:
+        chat_history_store.pop(chat_state_id, None)
 
 def upload_database_to_backend(
     database_file
@@ -417,8 +444,8 @@ def extract_query_details(
     )
 
     truncated = execution_result.get(
-        "truncated",
-        False
+        "result_truncated",
+        execution_result.get("truncated", False)
     )
 
     display_rows = []
@@ -495,6 +522,7 @@ def clear_conversation_state() -> None:
     )
 
     clear_query_details()
+    clear_chat_history()
 
 
 
@@ -524,10 +552,8 @@ def home():
                 session["database_filename"] = upload_result[
                     "filename"
                 ]
-                clear_query_details()
-                upload_message = (
-                    "Database uploaded successfully."
-                )
+                clear_conversation_state()
+                return redirect(url_for("chat"))
 
             else:
                 upload_error = upload_result["error"]
@@ -550,218 +576,101 @@ def chat():
     database_id = session.get("database_id")
 
     if not database_id:
-        return redirect(
-            url_for("home")
-        )
-
-    chat_error = None
+        return redirect(url_for("home"))
 
     if request.method == "POST":
-        question = request.form.get(
-            "question",
-            ""
-        ).strip()
+        message = request.form.get("message", "").strip()
 
-        if not question:
-            chat_error = "Please enter a question."
+        if not message:
+            add_chat_message(
+                "assistant", "Please enter a question.", "error", is_error=True
+            )
 
         else:
-            clear_query_details()
-            chat_result = send_question_to_backend(
-                database_id=database_id,
-                question=question
+            pending_id = session.get("pending_conversation_id")
+            add_chat_message(
+                "user",
+                message,
+                "clarification" if pending_id else "question"
             )
+
+            if pending_id:
+                chat_result = send_clarification_to_backend(pending_id, message)
+            else:
+                chat_result = send_question_to_backend(database_id, message)
 
             if chat_result["success"]:
                 response_data = chat_result["data"]
                 status = response_data.get("status")
 
-                if not status:
-                    chat_error = (
-                        "The backend response did not contain "
-                        "a valid processing status."
-                    )
-
-                    return render_template(
-                        "chat.html",
-                        database_filename=session.get(
-                            "database_filename"
-                        ),
-                        last_question=session.get(
-                            "last_question"
-                        ),
-                        last_answer=session.get(
-                            "last_answer"
-                        ),
-                        last_clarification_answer=session.get(
-                            "last_clarification_answer"
-                        ),
-                        clarification_question=session.get(
-                            "clarification_question"
-                        ),
-                        pending_conversation_id=session.get(
-                            "pending_conversation_id"
-                        ),
-                        clarification_error=session.get(
-                            "clarification_error"
-                        ),
-                        chat_error=chat_error,
-                        query_details=get_query_details()
-                    )
-
-                session["last_question"] = question
-
-                session.pop(
-                    "last_clarification_answer",
-                    None
-                )
-
-                session.pop(
-                    "clarification_error",
-                    None
-                )
-
                 if status == "completed":
-                    answer = extract_completed_answer(
-                        response_data
+                    add_chat_message(
+                        "assistant",
+                        extract_completed_answer(response_data),
+                        "answer",
+                        extract_query_details(response_data)
                     )
-
-                    session["last_answer"] = answer
-                    query_details = extract_query_details(
-                        response_data
-                    )
-
-                    save_query_details(
-                        query_details
-                    )
-                    session.pop(
-                        "pending_conversation_id",
-                        None
-                    )
-                    session.pop(
-                        "clarification_question",
-                        None
-                    )
+                    session.pop("pending_conversation_id", None)
 
                 elif status == "clarification_required":
-                    conversation_id = response_data.get(
+                    session["pending_conversation_id"] = response_data.get(
                         "conversation_id"
                     )
-
-                    clarification_question = (
-                        extract_clarification_question(
-                            response_data
-                        )
-                    )
-
-                    session[
-                        "pending_conversation_id"
-                    ] = conversation_id
-
-                    session[
-                        "clarification_question"
-                    ] = clarification_question
-
-                    session["last_answer"] = (
-                        clarification_question
+                    add_chat_message(
+                        "assistant",
+                        extract_clarification_question(response_data),
+                        "clarification"
                     )
 
                 elif status == "irrelevant":
-                    session["last_answer"] = (
-                        response_data.get(
-                            "message",
-                            (
-                                "This question cannot be "
-                                "answered using the "
-                                "uploaded database."
-                            )
-                        )
+                    relevance = response_data.get("relevance") or {}
+                    add_chat_message(
+                        "assistant",
+                        relevance.get("reason") or response_data.get("message") or
+                        "This question cannot be answered using the uploaded database.",
+                        "answer"
                     )
 
                 else:
-                    chat_error = (
-                        "The backend returned an unsupported "
-                        f"response status: {status}"
+                    add_chat_message(
+                        "assistant",
+                        "The backend returned an invalid processing status.",
+                        "error",
+                        is_error=True
                     )
 
             else:
-                error_type = chat_result.get(
-                    "error_type"
-                )
+                error_type = chat_result.get("error_type")
 
                 if error_type == "database_not_found":
                     session.pop("database_id", None)
-                    session.pop(
-                        "database_filename",
-                        None
-                    )
-
+                    session.pop("database_filename", None)
                     clear_conversation_state()
-
                     session["database_error"] = (
-                        "The selected database is no longer "
-                        "available. Please upload it again."
+                        "The selected database is no longer available. Please upload it again."
                     )
+                    return redirect(url_for("home"))
 
-                    return redirect(
-                        url_for("home")
-                    )
+                if error_type == "conversation_not_found":
+                    session.pop("pending_conversation_id", None)
+                add_chat_message(
+                    "assistant", chat_result["error"], "error", is_error=True
+                )
 
-                chat_error = chat_result["error"]
-
-            return render_template(
-                "chat.html",
-                database_filename=session.get(
-                    "database_filename"
-                ),
-                last_question=session.get(
-                    "last_question"
-                ),
-                last_answer=session.get(
-                    "last_answer"
-                ),
-                last_clarification_answer=session.get(
-                    "last_clarification_answer"
-                ),
-                clarification_question=session.get(
-                    "clarification_question"
-                ),
-                pending_conversation_id=session.get(
-                    "pending_conversation_id"
-                ),
-                clarification_error=session.get(
-                    "clarification_error"
-                ),
-                chat_error=chat_error,
-                query_details=get_query_details()
-            )
+            return redirect(url_for("chat"))
 
     return render_template(
         "chat.html",
-        database_filename=session.get(
-            "database_filename"
-        ),
-        last_question=session.get(
-            "last_question"
-        ),
-        last_answer=session.get(
-            "last_answer"
-        ),
-        last_clarification_answer=session.get(
-            "last_clarification_answer"
-        ),
-        clarification_question=session.get(
-            "clarification_question"
-        ),
-        pending_conversation_id=session.get(
-            "pending_conversation_id"
-        ),
-        clarification_error=session.get(
-            "clarification_error"
-        ),
-        chat_error=chat_error,
-        query_details=get_query_details()
+        database_filename=session.get("database_filename"),
+        messages=get_chat_history(),
+        pending_conversation_id=session.get("pending_conversation_id")
     )
+
+
+@app.route("/chat/clear", methods=["POST"])
+def clear_chat():
+    clear_conversation_state()
+    return redirect(url_for("chat"))
 
 
 @app.route("/reset-database", methods=["POST"])
@@ -775,6 +684,7 @@ def reset_database():
     session.pop("last_clarification_answer", None)
     session.pop("clarification_error", None)
     clear_query_details()
+    clear_chat_history()
     return redirect(url_for("home"))
 
 

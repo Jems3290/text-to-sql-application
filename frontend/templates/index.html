@@ -1,235 +1,66 @@
 {% extends "base.html" %}
-
-
-{% block title %}
-    Text-to-SQL | Database
-{% endblock %}
-
+{% block title %}Text-to-SQL — Connect Database{% endblock %}
+{% block body_class %}home-page{% endblock %}
 
 {% block content %}
+<main class="home-shell">
+    <section class="hero" aria-labelledby="page-title">
+        <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 7c0-2 3.6-3.6 8-3.6S20 5 20 7s-3.6 3.6-8 3.6S4 9 4 7Zm0 0v5c0 2 3.6 3.6 8 3.6s8-1.6 8-3.6V7M4 12v5c0 2 3.6 3.6 8 3.6s8-1.6 8-3.6v-5"/></svg>
+        </div>
+        <p class="eyebrow">Intelligent data conversations</p>
+        <h1 id="page-title">Conversational <span>Text-to-SQL</span></h1>
+        <p class="hero-copy">Talk to your database using natural language.</p>
+    </section>
 
-    {% if database_error %}
-
-        <table
-            border="1"
-            cellpadding="15"
-            cellspacing="0"
-            width="70%"
-        >
-            <tr>
-                <td align="center">
-
-                    <h3>
-                        Database Connection Error
-                    </h3>
-
-                    <p>
-                        {{ database_error }}
-                    </p>
-
-                </td>
-            </tr>
-        </table>
-
-        <br>
-
+    {% if database_error or upload_error %}
+    <div class="notice notice-error" role="alert">
+        <span class="notice-icon">!</span>
+        <div><strong>Unable to connect database</strong><p>{{ database_error or upload_error }}</p></div>
+    </div>
     {% endif %}
-
 
     {% if database_id %}
-
-        <table
-            border="1"
-            cellpadding="15"
-            cellspacing="0"
-            width="70%"
-        >
-            <tr>
-                <td align="center">
-
-                    <h2>
-                        Current Database
-                    </h2>
-
-                    <p>
-                        <b>Filename:</b>
-                        {{ database_filename }}
-                    </p>
-
-                    <p>
-                        <b>Database ID:</b>
-                        {{ database_id }}
-                    </p>
-
-                    <p>
-                        <a href="{{ url_for('chat') }}">
-                            Open Chat
-                        </a>
-                    </p>
-
-                    <form
-                        method="POST"
-                        action="{{ url_for('reset_database') }}"
-                    >
-                        <button type="submit">
-                            Reset Database
-                        </button>
-                    </form>
-
-                </td>
-            </tr>
-        </table>
-
-        <br>
-
+    <section class="active-database glass-card">
+        <div class="status-dot"></div>
+        <div class="active-copy"><span>Active database</span><strong>{{ database_filename }}</strong></div>
+        <a class="button button-secondary compact" href="{{ url_for('chat') }}">Continue chat</a>
+        <form method="post" action="{{ url_for('reset_database') }}">
+            <button class="icon-button" type="submit" aria-label="Reset active database" title="Reset database">
+                <svg viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M5.1 15a8 8 0 0 0 13.2 2M18.9 9A8 8 0 0 0 5.7 7"/></svg>
+            </button>
+        </form>
+    </section>
     {% endif %}
 
+    <section class="upload-card glass-card" data-upload-card>
+        <div class="glass-reflection"></div>
+        <div class="upload-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+        </div>
+        <h2>{{ "Change your database" if database_id else "Upload your SQLite database" }}</h2>
+        <p>Connect a valid database and start asking questions instantly.</p>
 
-    <table
-        border="1"
-        cellpadding="20"
-        cellspacing="0"
-        width="70%"
-    >
-        <tr>
-            <td align="center">
-
-                {% if database_id %}
-
-                    <h2>
-                        Change Database
-                    </h2>
-
-                    <p>
-                        Upload another SQLite database to replace
-                        the currently selected database.
-                    </p>
-
-                {% else %}
-
-                    <h2>
-                        Upload SQLite Database
-                    </h2>
-
-                    <p>
-                        Select a database before starting a conversation.
-                    </p>
-
-                {% endif %}
-
-
-                <form
-                    method="POST"
-                    enctype="multipart/form-data"
-                >
-
-                    <p>
-                        Select a .db, .sqlite, or .sqlite3 database file
-                    </p>
-
-                    <input
-                        type="file"
-                        name="database_file"
-                        accept=".db,.sqlite,.sqlite3"
-                        required
-                    >
-
-                    <br>
-                    <br>
-
-                    <button type="submit">
-                        Upload Database
-                    </button>
-
-                </form>
-
-            </td>
-        </tr>
-    </table>
-
-
-    <br>
-
-
-    {% if upload_message %}
-
-        <table
-            border="1"
-            cellpadding="15"
-            cellspacing="0"
-            width="70%"
-        >
-            <tr>
-                <td align="center">
-
-                    <h3>
-                        Upload Successful
-                    </h3>
-
-                    <p>
-                        {{ upload_message }}
-                    </p>
-
-                </td>
-            </tr>
-        </table>
-
-        <br>
-
-    {% endif %}
-
-
-    {% if upload_error %}
-
-        <table
-            border="1"
-            cellpadding="15"
-            cellspacing="0"
-            width="70%"
-        >
-            <tr>
-                <td align="center">
-
-                    <h3>
-                        Upload Error
-                    </h3>
-
-                    <p>
-                        {{ upload_error }}
-                    </p>
-
-                </td>
-            </tr>
-        </table>
-
-        <br>
-
-    {% endif %}
-
-
-    {% if not database_id %}
-
-        <table
-            border="1"
-            cellpadding="15"
-            cellspacing="0"
-            width="70%"
-        >
-            <tr>
-                <td align="center">
-
-                    <h3>
-                        No Database Selected
-                    </h3>
-
-                    <p>
-                        Upload a database before asking questions.
-                    </p>
-
-                </td>
-            </tr>
-        </table>
-
-    {% endif %}
-
+        <form method="post" enctype="multipart/form-data" class="upload-form" data-upload-form>
+            <label class="drop-zone" for="database-file" data-drop-zone>
+                <input id="database-file" type="file" name="database_file" accept=".db,.sqlite,.sqlite3" required data-file-input>
+                <span class="drop-icon">
+                    <svg viewBox="0 0 24 24"><path d="M7 18a5 5 0 0 1-.8-9.9A7 7 0 0 1 19.8 10 4 4 0 0 1 19 18h-4M12 20V10m0 0-3 3m3-3 3 3"/></svg>
+                </span>
+                <strong data-drop-title>Drop your database here</strong>
+                <span data-file-name>or choose a file from your computer</span>
+                <span class="file-types">.db · .sqlite · .sqlite3</span>
+            </label>
+            <button class="button button-primary upload-submit" type="submit" data-submit-button>
+                <span class="button-label">Upload Database</span>
+                <span class="button-loader" aria-hidden="true"></span>
+                <svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+            </button>
+        </form>
+        <p class="privacy-note">
+            <svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3m-11 0h12v10H6z"/></svg>
+            Your database is validated and queried in read-only mode.
+        </p>
+    </section>
+</main>
 {% endblock %}
